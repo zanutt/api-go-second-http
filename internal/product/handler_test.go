@@ -56,3 +56,25 @@ func TestCreateProducts(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, rr.Code, "Expected status code 201 Created")
 	assert.NotEmpty(t, rr.Body.String(), "Response body should not be empty")
 }
+
+func TestGetProductHandler(t *testing.T) {
+	repo := NewProductRepository()
+	handler := NewHandler(repo)
+
+	req, err := http.NewRequest("GET", "/products/1", nil)
+	assert.NoError(t, err, "Failed to create request")
+
+	rr := httptest.NewRecorder()
+
+	handler.GetProductHandler(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code, "Expected status code 200 Ok")
+
+	product, err := repo.GetByID(1)
+	assert.NoError(t, err, "Product should exist for test")
+
+	expectedJSON, err := json.Marshal(product)
+	assert.NoError(t, err, "Failed to marshal expected product")
+
+	assert.JSONEq(t, string(expectedJSON), rr.Body.String(), "Response body does not match expected product")
+}
