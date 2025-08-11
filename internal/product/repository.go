@@ -1,6 +1,9 @@
 package product
 
-import "go-marketplace/internal/models"
+import (
+	"errors"
+	"go-marketplace/internal/models"
+)
 
 type ProductRepository struct {
 	products map[uint]models.Product
@@ -36,4 +39,12 @@ func (r *ProductRepository) AddProduct(product models.Product) models.Product {
 	r.nextID++
 
 	return product
+}
+
+func (r *ProductRepository) GetByID(id uint) (models.Product, error) {
+	product, ok := r.products[id]
+	if !ok {
+		return models.Product{}, errors.New("product not found")
+	}
+	return product, nil
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"go-marketplace/internal/models"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 type Handler struct {
@@ -45,4 +47,30 @@ func (h *Handler) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (h *Handler) GetProductHandler(w http.ResponseWriter, r *http.Request) {
+	pathSegments := strings.Split(r.URL.Path, "/")
+
+	if len(pathSegments) < 3 || pathSegments[2] == "" {
+		http.Error(w, "Product ID is required", http.StatusBadRequest)
+		return
+	}
+
+	idStr := pathSegments[2]
+
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		return
+	}
+
+	product, err := h.repo.GetByID((uint)(id))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(product)
 }
