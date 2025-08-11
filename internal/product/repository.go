@@ -4,6 +4,7 @@ import "go-marketplace/internal/models"
 
 type ProductRepository struct {
 	products map[uint]models.Product
+	nextID   uint
 }
 
 func NewProductRepository() *ProductRepository {
@@ -14,6 +15,7 @@ func NewProductRepository() *ProductRepository {
 
 	return &ProductRepository{
 		products: products,
+		nextID:   3,
 	}
 }
 
@@ -24,4 +26,14 @@ func (r *ProductRepository) GetAll() []models.Product {
 		allProducts = append(allProducts, product)
 	}
 	return allProducts
+}
+
+func (r *ProductRepository) AddProduct(product models.Product) models.Product {
+	product.ID = r.nextID
+
+	r.products[product.ID] = product
+
+	r.nextID++
+
+	return product
 }
