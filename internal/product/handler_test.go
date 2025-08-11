@@ -1,6 +1,7 @@
 package product
 
 import (
+	"bytes"
 	"encoding/json"
 	"go-marketplace/internal/models"
 	"net/http"
@@ -11,24 +12,47 @@ import (
 )
 
 func TestListProducts(t *testing.T) {
-	products := []models.Product{
-		{ID: 1, Name: "Notebook", Price: 500000, Description: "Notebook gamer"},
-		{ID: 2, Name: "Mouse", Price: 15000, Description: "Notebook gamer"},
-	}
 
-	expected, err := json.Marshal(products)
-	assert.NoError(t, err, "Failed to marshal expected products")
+	repo := NewProductRepository()
+	handler := NewHandler(repo)
 
 	req, err := http.NewRequest("GET", "/products", nil)
 	assert.NoError(t, err, "Failed to create request")
-
 	rr := httptest.NewRecorder()
 
-	ListProductsHandler(rr, req)
+	handler.ListProductsHandler(rr, req)
 
 	// Check status OK
 	assert.Equal(t, http.StatusOK, rr.Code, "Expected status code 200 Ok")
 
+	products := repo.GetAll()
+	expected, err := json.Marshal(products)
+	assert.NoError(t, err, "Failed to marshal expected products")
+
 	assert.JSONEq(t, string(expected), rr.Body.String(), "Response body does not match expected products")
 
+}
+
+func TestCreateProducts(t *testing.T) {
+	repo := NewProductRepository()
+	handler := NewHandler(repo)
+
+	newProduct := models.Product{
+		Name:        "Keyboard",
+		Price:       20000,
+		Description: "Mechanical keyboard",
+	}
+
+	productJSON, err := json.Marshal(newProduct)
+	assert.NoError(t, err, "Failed to marshal new product")
+
+	body := bytes.NewBuffer(productJSON)
+	req, err := http.NewRequest("POST", "/products", body)
+	assert.NoError(t, err, "Failed to create request")
+	rr := httptest.NewRecorder()
+
+	handler.CreateProductHandler(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code, "Expected status code 201 Created")
+	assert.NotEmpty(t, rr.Body.String(), "Response body should not be empty")
 }
