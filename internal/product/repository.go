@@ -48,3 +48,14 @@ func (r *ProductRepository) GetByID(id uint) (models.Product, error) {
 	}
 	return product, nil
 }
+
+func (r *ProductRepository) UpdateProduct(id uint, updatedProduct models.Product) (models.Product, error) {
+	if _, ok := r.products[id]; !ok {
+		return models.Product{}, errors.New("product not found")
+	}
+
+	updatedProduct.ID = id
+
+	r.products[id] = updatedProduct
+	return updatedProduct, nil
+}

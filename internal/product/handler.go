@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"go-marketplace/internal/models"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 )
@@ -73,4 +74,34 @@ func (h *Handler) GetProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(product)
+}
+
+func (h *Handler) UpdateProductHandler(w *httptest.ResponseRecorder, r *http.Request) {
+	pathSegments := strings.Split(r.URL.Path, "/")
+	if len(pathSegments) < 3 || pathSegments[2] == "" {
+		http.Error(w, "Product ID is required", http.StatusBadRequest)
+		return
+	}
+	idStr := pathSegments[2]
+	idUint64, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		return
+	}
+	id := uint(idUint64)
+
+	var updatedProduct models.Product
+	if err := json.NewDecoder(r.Body).Decode(&updatedProduct); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.repo.UpdateProduct(uint(id), updatedProduct)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 }
