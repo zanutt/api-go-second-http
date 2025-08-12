@@ -78,3 +78,34 @@ func TestGetProductHandler(t *testing.T) {
 
 	assert.JSONEq(t, string(expectedJSON), rr.Body.String(), "Response body does not match expected product")
 }
+
+func TestUpdateProductHandler(t *testing.T) {
+	repo := NewProductRepository()
+	handler := NewHandler(repo)
+
+	UpdatedProductData := models.Product{
+		Name:        "Notebook SuperUpgrade",
+		Price:       600000,
+		Description: "High performance notebook",
+	}
+
+	productJSON, err := json.Marshal(UpdatedProductData)
+	assert.NoError(t, err, "Failed to marshal updated product")
+
+	body := bytes.NewBuffer(productJSON)
+
+	req, err := http.NewRequest("PUT", "/products/1", body)
+	assert.NoError(t, err, "Failed to create request")
+
+	rr := httptest.NewRecorder()
+
+	handler.UpdateProductHandler(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code, "Expected status code 200 Ok")
+
+	expectedProduct := UpdatedProductData
+	expectedProduct.ID = 1
+	expectedJSON, _ := json.Marshal(expectedProduct)
+
+	assert.JSONEq(t, string(expectedJSON), rr.Body.String(), "Response body does not match expected updated product")
+}
