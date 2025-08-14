@@ -2,41 +2,56 @@ package database_test
 
 import (
 	"database/sql"
-	"fmt"
 	"go-marketplace/internal/infrastructure/database"
 	"go-marketplace/internal/models"
-	"log"
+	"go-marketplace/internal/product"
+	"os"
 	"testing"
 
 	_ "github.com/lib/pq"
-
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 )
 
-const dsn = "host=localhost port=5433 user=postgres password=1234567 dbname=go_marketplace sslmode=disable"
-
-func TestDatabaseConnection(t *testing.T) {
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		log.Fatalf("Failed to open database connection: %v", err)
-	}
-	defer db.Close()
-
-	err = db.Ping()
-	assert.NoError(t, err, "Failed to connect to the database")
-
-	fmt.Println("Successfully connected to the database")
+func TestMain(m *testing.M) {
+	os.Exit(m.Run())
 }
 
-func TestPostgresRepository_AddProduct(t *testing.T) {
-	db, err := sql.Open("postgres", dsn)
-	assert.NoError(t, err, "Failed to open database connection")
-	defer db.Close()
+func setupTestDB(t *testing.T) (product.ProductRepository, func()) {
 
-	_, err = db.Exec("DELETE FROM products")
-	assert.NoError(t, err, "Failed to delete products")
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open database: %v", err)
+	}
 
-	repo := database.NewPostgresRepository(db)
+	// Cria a tabela de produtos
+	if _, err := db.Exec(`CREATE TABLE products (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		price INTEGER NOT NULL,
+		description TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`); err != nil {
+		db.Close()
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	repo, err := database.NewSQLiteRepository()
+	if err != nil {
+		db.Close()
+		t.Fatalf("Failed to create repository: %v", err)
+	}
+
+	cleanup := func() {
+		db.Close()
+	}
+
+	return repo, cleanup
+}
+
+func TestRepository_AddProduct(t *testing.T) {
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
 
 	newProduct := models.Product{
 		Name:        "Monitor Gamer",
@@ -45,22 +60,15 @@ func TestPostgresRepository_AddProduct(t *testing.T) {
 	}
 
 	addedProduct, err := repo.AddProduct(newProduct)
-
 	assert.NoError(t, err, "Failed to add product")
 	assert.NotZero(t, addedProduct.ID, "Product must have a ID")
 	assert.Equal(t, newProduct.Name, addedProduct.Name, "Product name should match")
 	assert.Equal(t, newProduct.Price, addedProduct.Price, "Product price should match")
 }
 
-func TestPostgresRepository_GetAll(t *testing.T) {
-	db, err := sql.Open("postgres", dsn)
-	assert.NoError(t, err, "Failed to open database connection")
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM products")
-	assert.NoError(t, err, "Failed to delete products")
-
-	repo := database.NewPostgresRepository(db)
+func TestRepository_GetAll(t *testing.T) {
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
 
 	product1 := models.Product{Name: "Produto A", Price: 10000, Description: "Descrição A"}
 	product2 := models.Product{Name: "Produto B", Price: 20000, Description: "Descrição B"}
@@ -72,15 +80,9 @@ func TestPostgresRepository_GetAll(t *testing.T) {
 	assert.Len(t, allProducts, 2, "Should return two products")
 }
 
-func TestPostgresRepository_GetByID(t *testing.T) {
-	db, err := sql.Open("postgres", dsn)
-	assert.NoError(t, err, "Failed to open database connection")
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM products")
-	assert.NoError(t, err, "Failed to delete products")
-
-	repo := database.NewPostgresRepository(db)
+func TestRepository_GetByID(t *testing.T) {
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
 
 	productToFind := models.Product{
 		Name:        "Right Product",
@@ -98,20 +100,14 @@ func TestPostgresRepository_GetByID(t *testing.T) {
 	assert.Equal(t, addedProduct.Price, foundProduct.Price, "Product price should match")
 	assert.Equal(t, addedProduct.Description, foundProduct.Description, "Product description should match")
 
-	_, err = repo.GetByID(9999) // Non-existent ID
+	_, err = repo.GetByID(9999)
 	assert.Error(t, err, "Expected error for non-existent product")
 	assert.Equal(t, sql.ErrNoRows, err, "Expected sql.ErrNoRows for non-existent product")
 }
 
-func TestPostgresRepository_UpdateProduct(t *testing.T) {
-	db, err := sql.Open("postgres", dsn)
-	assert.NoError(t, err, "Failed to open database connection")
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM products")
-	assert.NoError(t, err, "Failed to delete products")
-
-	repo := database.NewPostgresRepository(db)
+func TestRepository_UpdateProduct(t *testing.T) {
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
 
 	productToUpdate := models.Product{
 		Name:  "Old Keyboard",
@@ -127,25 +123,18 @@ func TestPostgresRepository_UpdateProduct(t *testing.T) {
 	}
 
 	updatedProduct, err := repo.UpdateProduct(addedProduct.ID, updatedData)
-
 	assert.NoError(t, err, "Failed to update product")
 	assert.Equal(t, updatedData.Name, updatedProduct.Name)
 	assert.Equal(t, updatedData.Price, updatedProduct.Price)
 
-	_, err = repo.UpdateProduct(999, updatedData) // Non-existent ID
+	_, err = repo.UpdateProduct(999, updatedData)
 	assert.Error(t, err, "Expected error for non-existent product")
 	assert.EqualError(t, err, "product not found", "Expected 'product not found' for non-existent product")
 }
 
-func TestPostgresRepository_DeleteProduct(t *testing.T) {
-	db, err := sql.Open("postgres", dsn)
-	assert.NoError(t, err, "Failed to open database connection")
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM products")
-	assert.NoError(t, err, "Failed to delete products")
-
-	repo := database.NewPostgresRepository(db)
+func TestRepository_DeleteProduct(t *testing.T) {
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
 
 	productToDelete := models.Product{
 		Name:  "NEW Keyboard",
@@ -161,8 +150,7 @@ func TestPostgresRepository_DeleteProduct(t *testing.T) {
 	assert.Error(t, err, "Expected error for deleted product")
 	assert.Equal(t, sql.ErrNoRows, err, "Expected sql.ErrNoRows for deleted product")
 
-	err = repo.DeleteProduct(999) // Non-existent ID
+	err = repo.DeleteProduct(999)
 	assert.Error(t, err, "Expected error for non-existent product")
 	assert.EqualError(t, err, "product not found", "Expected 'product not found' for non-existent product")
-
 }
