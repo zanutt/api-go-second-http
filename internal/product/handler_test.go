@@ -109,3 +109,18 @@ func TestUpdateProductHandler(t *testing.T) {
 
 	assert.JSONEq(t, string(expectedJSON), rr.Body.String(), "Response body does not match expected updated product")
 }
+
+func TestDeleteProductHandler(t *testing.T) {
+	repo := NewProductRepository()
+	handler := NewHandler(repo)
+
+	req, err := http.NewRequest("DELETE", "/products/1", nil)
+	assert.NoError(t, err, "Failed to create request")
+
+	rr := httptest.NewRecorder()
+	handler.DeleteProductHandler(rr, req)
+
+	assert.Equal(t, http.StatusNoContent, rr.Code, "Expected status code 204 No Content")
+	assert.Empty(t, rr.Body.String(), "Response body should be empty")
+
+}
