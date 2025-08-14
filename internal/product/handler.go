@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"go-marketplace/internal/models"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"strings"
 )
@@ -84,7 +83,7 @@ func (h *Handler) GetProductHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-func (h *Handler) UpdateProductHandler(w *httptest.ResponseRecorder, r *http.Request) {
+func (h *Handler) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
 	pathSegments := strings.Split(r.URL.Path, "/")
 	if len(pathSegments) < 3 || pathSegments[2] == "" {
 		http.Error(w, "Product ID is required", http.StatusBadRequest)
