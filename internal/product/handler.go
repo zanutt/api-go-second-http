@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"go-marketplace/internal/models"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"strings"
 )
 
 type Handler struct {
-	repo *ProductRepository
+	repo ProductRepository
 }
 
-func NewHandler(repo *ProductRepository) *Handler {
+func NewHandler(repo ProductRepository) *Handler {
 	return &Handler{repo: repo}
 }
 
@@ -22,7 +21,11 @@ func (h *Handler) ListProductsHandler(w http.ResponseWriter, r *http.Request) {
 	// Set content-type header
 	w.Header().Set("Content-Type", "application/json")
 
-	products := h.repo.GetAll()
+	products, err := h.repo.GetAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if err := json.NewEncoder(w).Encode(products); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -38,7 +41,11 @@ func (h *Handler) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	createdProduct := h.repo.AddProduct(newProduct)
+	createdProduct, err := h.repo.AddProduct(newProduct)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -76,7 +83,7 @@ func (h *Handler) GetProductHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-func (h *Handler) UpdateProductHandler(w *httptest.ResponseRecorder, r *http.Request) {
+func (h *Handler) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
 	pathSegments := strings.Split(r.URL.Path, "/")
 	if len(pathSegments) < 3 || pathSegments[2] == "" {
 		http.Error(w, "Product ID is required", http.StatusBadRequest)
