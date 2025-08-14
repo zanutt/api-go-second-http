@@ -105,3 +105,25 @@ func (h *Handler) UpdateProductHandler(w *httptest.ResponseRecorder, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
+
+func (h *Handler) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
+	pathSegments := strings.Split(r.URL.Path, "/")
+	if len(pathSegments) < 3 || pathSegments[2] == "" {
+		http.Error(w, "Product ID is required", http.StatusBadRequest)
+		return
+	}
+	idStr := pathSegments[2]
+	idUint64, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		return
+	}
+	id := uint(idUint64)
+
+	if err := h.repo.DeleteProduct(id); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

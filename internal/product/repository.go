@@ -59,3 +59,12 @@ func (r *ProductRepository) UpdateProduct(id uint, updatedProduct models.Product
 	r.products[id] = updatedProduct
 	return updatedProduct, nil
 }
+
+func (r *ProductRepository) DeleteProduct(id uint) error {
+	if _, ok := r.products[id]; !ok {
+		return errors.New("product not found")
+	}
+
+	delete(r.products, id)
+	return nil
+}
