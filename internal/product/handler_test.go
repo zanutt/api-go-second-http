@@ -13,7 +13,7 @@ import (
 
 func TestListProducts(t *testing.T) {
 
-	repo := NewProductRepository()
+	repo := NewInMemoryRepository()
 	handler := NewHandler(repo)
 
 	req, err := http.NewRequest("GET", "/products", nil)
@@ -25,7 +25,9 @@ func TestListProducts(t *testing.T) {
 	// Check status OK
 	assert.Equal(t, http.StatusOK, rr.Code, "Expected status code 200 Ok")
 
-	products := repo.GetAll()
+	products, err := repo.GetAll()
+	assert.NoError(t, err, "Failed to get all products")
+
 	expected, err := json.Marshal(products)
 	assert.NoError(t, err, "Failed to marshal expected products")
 
@@ -34,7 +36,7 @@ func TestListProducts(t *testing.T) {
 }
 
 func TestCreateProducts(t *testing.T) {
-	repo := NewProductRepository()
+	repo := NewInMemoryRepository()
 	handler := NewHandler(repo)
 
 	newProduct := models.Product{
@@ -58,7 +60,7 @@ func TestCreateProducts(t *testing.T) {
 }
 
 func TestGetProductHandler(t *testing.T) {
-	repo := NewProductRepository()
+	repo := NewInMemoryRepository()
 	handler := NewHandler(repo)
 
 	req, err := http.NewRequest("GET", "/products/1", nil)
@@ -80,7 +82,7 @@ func TestGetProductHandler(t *testing.T) {
 }
 
 func TestUpdateProductHandler(t *testing.T) {
-	repo := NewProductRepository()
+	repo := NewInMemoryRepository()
 	handler := NewHandler(repo)
 
 	UpdatedProductData := models.Product{
@@ -111,7 +113,7 @@ func TestUpdateProductHandler(t *testing.T) {
 }
 
 func TestDeleteProductHandler(t *testing.T) {
-	repo := NewProductRepository()
+	repo := NewInMemoryRepository()
 	handler := NewHandler(repo)
 
 	req, err := http.NewRequest("DELETE", "/products/1", nil)
